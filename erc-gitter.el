@@ -25,6 +25,8 @@
 
 ;;; Code:
 
+(require 'erc)
+
 (define-erc-module gitter nil
   "Enable Gitter features in ERC."
   ((add-hook 'erc-send-pre-hook #'erc-gitter-send-code)
@@ -44,17 +46,21 @@
       (replace-match (format "\n%s" (erc-format-my-nick))))))
 
 (setq erc-gitter-button
-      '("#\\([0-9]+\\)" 1 (string= "irc.gitter.im" erc-session-server)
-        erc-gitter-browse-issue 1))
+      '("\\(\\w+/\\w+\\)?#\\([0-9]+\\)" 0 (string= "irc.gitter.im" erc-session-server)
+        erc-gitter-browse-issue 0))
 
 (add-to-list 'erc-button-alist erc-gitter-button)
 
-(defun erc-gitter-browse-issue (issue)
-  (let ((channel (substring (buffer-name (current-buffer))
-                            1))
-        (url "https://github.com/%s/issues/%s"))
+(defun erc-gitter-browse-issue (link)
+  (let* ((split (split-string link "#"))
+	 (channel (if (string= "" (car split))
+		      (substring (buffer-name (current-buffer))
+				 1)
+		    (car split)))
+	 (issue (cadr split))
+	 (url "https://github.com/%s/issues/%s"))
+    (message "%s = %s , %s" split channel issue)
     (browse-url (format url channel issue))))
-
 
 (provide 'erc-gitter)
 ;;; erc-gitter.el ends here
