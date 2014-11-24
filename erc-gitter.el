@@ -43,5 +43,18 @@
     (while (re-search-forward "[\r]" nil t)
       (replace-match (format "\n%s" (erc-format-my-nick))))))
 
+(setq erc-gitter-button
+      '("#\\([0-9]+\\)" 1 (string= "irc.gitter.im" erc-session-server)
+        erc-gitter-browse-issue 1))
+
+(add-to-list 'erc-button-alist erc-gitter-button)
+
+(defun erc-gitter-browse-issue (issue)
+  (let ((channel (substring (buffer-name (current-buffer))
+                            1))
+        (url "https://github.com/%s/issues/%s"))
+    (browse-url (format url channel issue))))
+
+
 (provide 'erc-gitter)
 ;;; erc-gitter.el ends here
