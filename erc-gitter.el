@@ -27,11 +27,23 @@
 
 (require 'erc)
 
+(defgroup erc-gitter nil
+  "Customization for `erc-gitter'."
+  :group 'erc)
+
+(defcustom erc-gitter-is-fool 't
+  "Is the gitter-bot considered a fool."
+  :type 'boolean
+  :group 'erc-gitter)
+
 (define-erc-module gitter nil
   "Enable Gitter features in ERC."
-  ((add-hook 'erc-send-pre-hook #'erc-gitter-send-code)
+  ((when erc-gitter-is-fool
+     erc-gitter-gitter-is-fool)
+   (add-hook 'erc-send-pre-hook #'erc-gitter-send-code)
    (add-hook 'erc-send-modify-hook #'erc-gitter-display-code))
-  ((remove-hook 'erc-send-pre-hook #'erc-gitter-send-code)
+  ((erc-gitter-gitter-is-no-fool)
+   (remove-hook 'erc-send-pre-hook #'erc-gitter-send-code)
    (remove-hook 'erc-send-modify-hook #'erc-gitter-display-code))
   'local)
 
@@ -59,8 +71,19 @@
 		    (car split)))
 	 (issue (cadr split))
 	 (url "https://github.com/%s/issues/%s"))
-    (message "%s = %s , %s" split channel issue)
     (browse-url (format url channel issue))))
+
+(defun erc-gitter-gitter-is-fool ()
+  "Add the gitter-bot to the list of fools.
+
+It will be treated as any other fool."
+  (interactive)
+  (add-to-list 'erc-fools "gitter!gitter@gitter.im"))
+
+(defun erc-gitter-gitter-is-no-fool ()
+  "Remove the gitter-bot from the list of fools."
+  (interactive)
+  (setq erc-fools (delete "gitter!gitter@gitter.im" erc-fools)))
 
 (provide 'erc-gitter)
 ;;; erc-gitter.el ends here
