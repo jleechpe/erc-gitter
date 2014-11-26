@@ -36,42 +36,45 @@
   :type 'boolean
   :group 'erc-gitter)
 
+(defvar erc-gitter-button
+  '("\\(\\w+/\\w+\\)?#\\([0-9]+\\)" 0
+    (string= "irc.gitter.im" erc-session-server)
+    erc-gitter-browse-issue 0)
+  "Match github issue links that are sent to ERC.")
+
 (define-erc-module gitter nil
   "Enable Gitter features in ERC."
   ((when erc-gitter-is-fool
-     erc-gitter-gitter-is-fool)
+     (erc-gitter-gitter-is-fool))
    (add-hook 'erc-send-pre-hook #'erc-gitter-send-code)
-   (add-hook 'erc-send-modify-hook #'erc-gitter-display-code))
+   (add-hook 'erc-send-modify-hook #'erc-gitter-display-code)
+   (add-to-list 'erc-button-alist erc-gitter-button))
   ((erc-gitter-gitter-is-no-fool)
    (remove-hook 'erc-send-pre-hook #'erc-gitter-send-code)
-   (remove-hook 'erc-send-modify-hook #'erc-gitter-display-code))
-  'local)
+   (remove-hook 'erc-send-modify-hook #'erc-gitter-display-code)
+   (setq erc-button-alist (delete erc-gitter-button erc-button-alist))))
 
 (defun erc-gitter-send-code (s)
-  (when erc-gitter-mode
+  (when (string= "irc.gitter.im" erc-session-server)
     (setq str (replace-regexp-in-string "[\n]" "\r" s nil))))
 
 (defun erc-gitter-display-code ()
-  (when erc-gitter-mode
+  (when (string= "irc.gitter.im" erc-session-server)
     (goto-char (point-min))
     (while (re-search-forward "[\r]" nil t)
       (replace-match (format "\n%s" (erc-format-my-nick))))))
 
-(setq erc-gitter-button
-      '("\\(\\w+/\\w+\\)?#\\([0-9]+\\)" 0 (string= "irc.gitter.im" erc-session-server)
-        erc-gitter-browse-issue 0))
-
-(add-to-list 'erc-button-alist erc-gitter-button)
 
 (defun erc-gitter-browse-issue (link)
-  (let* ((split (split-string link "#"))
-	 (channel (if (string= "" (car split))
-		      (substring (buffer-name (current-buffer))
-				 1)
-		    (car split)))
-	 (issue (cadr split))
-	 (url "https://github.com/%s/issues/%s"))
-    (browse-url (format url channel issue))))
+  (when (string= "irc.gitter.im" erc-session-server)
+    (let* ((split (split-string link "#"))
+           (channel (if (string= "" (car split))
+                        (substring (buffer-name (current-buffer))
+                                   1)
+                      (car split)))
+           (issue (cadr split))
+           (url "https://github.com/%s/issues/%s"))
+      (browse-url (format url channel issue)))))
 
 (defun erc-gitter-gitter-is-fool ()
   "Add the gitter-bot to the list of fools.
