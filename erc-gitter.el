@@ -26,6 +26,7 @@
 ;;; Code:
 
 (require 'erc)
+(require 'markdown-mode)
 
 (defgroup erc-gitter nil
   "Customization for `erc-gitter'."
@@ -48,10 +49,14 @@
      (erc-gitter-gitter-is-fool))
    (add-hook 'erc-send-pre-hook #'erc-gitter-send-code)
    (add-hook 'erc-send-modify-hook #'erc-gitter-display-code)
+   (add-hook 'erc-insert-modify-hook #'erc-gitter-format-markdown)
+   (add-hook 'erc-send-modify-hook #'erc-gitter-format-markdown)
    (add-to-list 'erc-button-alist erc-gitter-button))
   ((erc-gitter-gitter-is-no-fool)
    (remove-hook 'erc-send-pre-hook #'erc-gitter-send-code)
    (remove-hook 'erc-send-modify-hook #'erc-gitter-display-code)
+   (remove-hook 'erc-insert-modify-hook #'erc-gitter-format-markdown)
+   (remove-hook 'erc-send-modify-hook #'erc-gitter-format-markdown)
    (setq erc-button-alist (delete erc-gitter-button erc-button-alist))))
 
 (defun erc-gitter-send-code (s)
@@ -64,6 +69,22 @@
     (while (re-search-forward "[\r]" nil t)
       (replace-match (format "\n%s" (erc-format-my-nick))))))
 
+(defun erc-gitter-format-markdown ()
+  (when (string= "irc.gitter.im" erc-session-server)
+    (save-restriction
+      (let* ((marker erc-insert-marker)
+             (beg (point-min))
+             (end (point-max))
+             (str (buffer-substring beg end))
+             buf)
+        (with-temp-buffer
+          (insert str)
+          (markdown-mode)
+          (font-lock-fontify-region (point-min) (point-max))
+          (setq buf (buffer-substring (point-min) (point-max))))
+        (goto-char beg)
+        (insert buf)
+        (delete-region (point) (point-max))))))
 
 (defun erc-gitter-browse-issue (link)
   (when (string= "irc.gitter.im" erc-session-server)
