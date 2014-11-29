@@ -55,7 +55,7 @@
    (add-hook 'erc-insert-modify-hook #'erc-gitter-format-markdown)
    (add-hook 'erc-send-modify-hook #'erc-gitter-format-markdown)
    (add-to-list 'erc-button-alist erc-gitter-button)
-   (erc-gitter-minor-mode 1))
+   (add-hook 'erc-join-hook #'erc-gitter-if-gitter))
   ((erc-gitter-gitter-is-no-fool)
    (remove-hook 'erc-send-pre-hook #'erc-gitter-send-code)
    (remove-hook 'erc-send-modify-hook #'erc-gitter-display-code)
@@ -78,7 +78,12 @@
 (define-minor-mode erc-gitter-minor-mode
   "Minor mode to provide keybindings for `erc-gitter'."
   :keymap erc-gitter-minor-mode-map
-  :lighter)
+  :lighter " Gitter")
+
+(defun erc-gitter-if-gitter ()
+  (if (string= "irc.gitter.im" erc-session-server)
+      (erc-gitter-minor-mode 1)
+    nil))
 
 ;;;; Multiline sending and markdown formatting
 
