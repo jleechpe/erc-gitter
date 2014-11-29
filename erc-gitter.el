@@ -43,6 +43,9 @@
     erc-gitter-browse-issue 0)
   "Match github issue links that are sent to ERC.")
 
+(defvar erc-gitter-compose nil
+  "Non-nil when using erc-gitter-compose to override return.")
+
 (define-erc-module gitter nil
   "Enable Gitter features in ERC."
   ((when erc-gitter-is-fool
@@ -51,13 +54,31 @@
    (add-hook 'erc-send-modify-hook #'erc-gitter-display-code)
    (add-hook 'erc-insert-modify-hook #'erc-gitter-format-markdown)
    (add-hook 'erc-send-modify-hook #'erc-gitter-format-markdown)
-   (add-to-list 'erc-button-alist erc-gitter-button))
+   (add-to-list 'erc-button-alist erc-gitter-button)
+   (erc-gitter-minor-mode 1))
   ((erc-gitter-gitter-is-no-fool)
    (remove-hook 'erc-send-pre-hook #'erc-gitter-send-code)
    (remove-hook 'erc-send-modify-hook #'erc-gitter-display-code)
    (remove-hook 'erc-insert-modify-hook #'erc-gitter-format-markdown)
    (remove-hook 'erc-send-modify-hook #'erc-gitter-format-markdown)
-   (setq erc-button-alist (delete erc-gitter-button erc-button-alist))))
+   (setq erc-button-alist (delete erc-gitter-button erc-button-alist))
+   (erc-gitter-minor-mode 0)))
+
+;;;; Minor mode keybindigs
+
+(defvar erc-gitter-minor-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "<return>") #'erc-gitter-return)
+    (define-key map (kbd "S-<return>") #'erc-gitter-compose)
+    (define-key map (kbd "C-<return>") #'erc-gitter-send)
+    (define-key map (kbd "C-c c") #'erc-gitter-insert-code-block)
+    map)
+  "Keymap for ERC-Gitter mode.")
+
+(define-minor-mode erc-gitter-minor-mode
+  "Minor mode to provide keybindings for `erc-gitter'."
+  :keymap erc-gitter-minor-mode-map
+  :lighter)
 
 ;;;; Multiline sending and markdown formatting
 
@@ -114,6 +135,46 @@ It will be treated as any other fool."
   "Remove the gitter-bot from the list of fools."
   (interactive)
   (setq erc-fools (delete "gitter!gitter@gitter.im" erc-fools)))
+
+;;;; Markdown and compose mode
+
+(defun erc-gitter-return ()
+  "Check for codeblock then send current line.
+
+If the line starts with three backticks, enable
+`erc-gitter-compose' and adjust keybindings."
+  (interactive)
+  (cond
+   (erc-gitter-compose
+    (erc-gitter-compose))
+   ((save-excursion
+      (erc-bol)
+      (looking-at "```"))
+    (erc-gitter-compose)
+    (save-excursion
+      (newline)
+      (insert "```")))
+   ((erc-gitter-send))))
+
+(defun erc-gitter-send ()
+  (interactive)
+  (when erc-gitter-compose
+    (setq erc-gitter-compose nil)
+    (setq overriding-local-map nil))
+  (erc-send-current-line))
+
+(defun erc-gitter-compose ()
+  (interactive)
+  (setq erc-gitter-compose 't)
+  (newline))
+
+(defun erc-gitter-insert-code-block ()
+  (interactive)
+  (insert "```")
+  (erc-gitter-compose)
+  (save-excursion
+    (newline)
+    (insert "```")))
 
 (provide 'erc-gitter)
 ;;; erc-gitter.el ends here
