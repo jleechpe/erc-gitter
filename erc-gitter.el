@@ -59,6 +59,8 @@
    (remove-hook 'erc-send-modify-hook #'erc-gitter-format-markdown)
    (setq erc-button-alist (delete erc-gitter-button erc-button-alist))))
 
+;;;; Multiline sending and markdown formatting
+
 (defun erc-gitter-send-code (s)
   (when (string= "irc.gitter.im" erc-session-server)
     (setq str (replace-regexp-in-string "[\n]" "\r" s nil))))
@@ -86,6 +88,8 @@
         (insert buf)
         (delete-region (point) (point-max))))))
 
+;;;; Gitter link handling
+
 (defun erc-gitter-browse-issue (link)
   (when (string= "irc.gitter.im" erc-session-server)
     (let* ((split (split-string link "#"))
@@ -96,6 +100,8 @@
            (issue (cadr split))
            (url "https://github.com/%s/issues/%s"))
       (browse-url (format url channel issue)))))
+
+;;;; Gitter-bot notification handling
 
 (defun erc-gitter-gitter-is-fool ()
   "Add the gitter-bot to the list of fools.
