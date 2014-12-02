@@ -55,14 +55,22 @@
    (add-hook 'erc-insert-modify-hook #'erc-gitter-format-markdown)
    (add-hook 'erc-send-modify-hook #'erc-gitter-format-markdown)
    (add-to-list 'erc-button-alist erc-gitter-button)
-   (add-hook 'erc-join-hook #'erc-gitter-if-gitter))
+   (add-hook 'erc-join-hook #'erc-gitter-if-gitter)
+   (and (ad-enable-advice 'erc-server-filter-function
+                          'before
+                          'erc-gitter-multiline)
+        (ad-activate 'erc-server-filter-function)))
   ((erc-gitter-gitter-is-no-fool)
    (remove-hook 'erc-send-pre-hook #'erc-gitter-send-code)
    (remove-hook 'erc-send-modify-hook #'erc-gitter-display-code)
    (remove-hook 'erc-insert-modify-hook #'erc-gitter-format-markdown)
    (remove-hook 'erc-send-modify-hook #'erc-gitter-format-markdown)
    (setq erc-button-alist (delete erc-gitter-button erc-button-alist))
-   (erc-gitter-minor-mode 0)))
+   (erc-gitter-minor-mode 0)
+   (and (ad-disable-advice 'erc-server-filter-function
+                           'before
+                           'erc-gitter-multiline)
+        (ad-activate 'erc-server-filter-function))))
 
 ;;;; Minor mode keybindigs
 
@@ -113,6 +121,19 @@
         (goto-char beg)
         (insert buf)
         (delete-region (point) (point-max))))))
+
+;;;; Multiline receiving
+
+(defadvice erc-server-filter-function (before erc-gitter-multiline activate)
+  "Include message details in messages that include `^M' linebreaks.
+This allows for proper treatment of code blocks and multi-line
+messages sent from ERC."
+  (when (string-match-p "erc-irc.gitter.im-6667" (process-name process))
+    (let ((msg (and (string-match "\\\(:.*:\\\)" string)
+                    (match-string 1 string))))
+      (setq string (replace-regexp-in-string ""
+                                             (format "%s" msg)
+                                             string)))))
 
 ;;;; Gitter link handling
 
