@@ -81,7 +81,7 @@ non-nil values will set `gitter' as a fool."
                            'erc-gitter-multiline)
         (ad-activate 'erc-server-filter-function))))
 
-;;;; Minor mode keybindigs
+;;;; Minor mode keybindings
 
 (defvar erc-gitter-minor-mode-map
   (let ((map (make-sparse-keymap)))
@@ -89,6 +89,7 @@ non-nil values will set `gitter' as a fool."
     (define-key map (kbd "S-<return>") #'erc-gitter-compose)
     (define-key map (kbd "C-<return>") #'erc-gitter-send)
     (define-key map (kbd "C-c c") #'erc-gitter-insert-code-block)
+    (define-key map (kbd "C-c n") #'erc-gn-switch-to-notif)
     map)
   "Keymap for ERC-Gitter mode.")
 
@@ -176,12 +177,39 @@ It will be treated as any other fool."
 (defun erc-gitter-bot-to-buffer (match-type nickuserhost message)
   (when (and (eq match-type 'fool)
              (string= "gitter!gitter@gitter.im" nickuserhost))
-    (let ((buf (get-buffer-create "*Gitter Notifications*")))
+    (let ((buf (erc-gn-make-buffer)))
       (with-current-buffer buf
-        (special-mode)
         (goto-char (point-max))
         (insert message))
       (erc-hide-fools match-type nickuserhost message))))
+
+(defun erc-gn-make-buffer ()
+  (when (eq erc-gitter-bot-handling 'buffer)
+    (let ((buf (get-buffer-create "*Gitter Notifications*")))
+      (with-current-buffer buf
+        (gitter-notifications-mode))
+      buf)))
+
+(defvar gitter-notifications-mode-map
+  (let ((map (make-sparse-keymap)))
+    (set-keymap-parent map special-mode-map)
+    (define-key map "g" nil) ; nothing to revert
+    (define-key map "q" #'bury-buffer)
+    ;; (define-key map (kbd "<return>") #'erc-gn-visit)
+    ;; (define-key map "p" #'erc-gn-previous)
+    ;; (define-key map "n" #'erc-gn-next)
+    map))
+
+(define-derived-mode gitter-notifications-mode special-mode
+  "Gitter-Notifications"
+  "Major mode used in the \"*Gitter Notifications*\" buffer."
+  :group 'erc-gitter)
+
+(defun erc-gn-switch-to-notif ()
+  (interactive)
+  (if (eq erc-gitter-bot-handling 'buffer)
+      (switch-to-buffer (erc-gn-make-buffer))
+    (user-error "Gitter notifications are not being tracked.")))
 
 ;;;; Markdown and compose mode
 
