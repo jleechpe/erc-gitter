@@ -32,9 +32,15 @@
   "Customization for `erc-gitter'."
   :group 'erc)
 
-(defcustom erc-gitter-is-fool 't
-  "Is the gitter-bot considered a fool."
-  :type 'boolean
+(defcustom erc-gitter-bot-handling 't
+  "How to handle messages from gitter integration.
+
+'buffer will send messages to a separate buffer
+nil will do nothing with it.
+non-nil values will set `gitter' as a fool."
+  :type '(choice (const :tag "Do nothing" nil)
+                 (const :tag "Separate buffer" 'buffer)
+                 (symbol :tag "Treat as Fool" 't))
   :group 'erc-gitter)
 
 (defvar erc-gitter-button
@@ -48,8 +54,10 @@
 
 (define-erc-module gitter nil
   "Enable Gitter features in ERC."
-  ((when erc-gitter-is-fool
+  ((when erc-gitter-bot-handling
      (erc-gitter-gitter-is-fool))
+   (when (eq erc-gitter-bot-handling 'buffer)
+     (add-hook 'erc-text-matched-hook 'erc-gitter-bot-to-buffer))
    (add-hook 'erc-send-pre-hook #'erc-gitter-send-code)
    (add-hook 'erc-send-modify-hook #'erc-gitter-display-code)
    (add-hook 'erc-insert-modify-hook #'erc-gitter-format-markdown)
@@ -61,6 +69,7 @@
                           'erc-gitter-multiline)
         (ad-activate 'erc-server-filter-function)))
   ((erc-gitter-gitter-is-no-fool)
+   (remove-hook 'erc-text-matched-hook 'erc-gitter-bot-to-buffer)
    (remove-hook 'erc-send-pre-hook #'erc-gitter-send-code)
    (remove-hook 'erc-send-modify-hook #'erc-gitter-display-code)
    (remove-hook 'erc-insert-modify-hook #'erc-gitter-format-markdown)
@@ -161,6 +170,18 @@ It will be treated as any other fool."
   "Remove the gitter-bot from the list of fools."
   (interactive)
   (setq erc-fools (delete "gitter!gitter@gitter.im" erc-fools)))
+
+;;;;; Gitter notification buffer
+
+(defun erc-gitter-bot-to-buffer (match-type nickuserhost message)
+  (when (and (eq match-type 'fool)
+             (string= "gitter!gitter@gitter.im" nickuserhost))
+    (let ((buf (get-buffer-create "*Gitter Notifications*")))
+      (with-current-buffer buf
+        (special-mode)
+        (goto-char (point-max))
+        (insert message))
+      (erc-hide-fools match-type nickuserhost message))))
 
 ;;;; Markdown and compose mode
 
