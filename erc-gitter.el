@@ -27,6 +27,7 @@
 
 (require 'erc)
 (require 'markdown-mode)
+(require 'erc-gitter-notifications)
 
 (defgroup erc-gitter nil
   "Customization for `erc-gitter'."
