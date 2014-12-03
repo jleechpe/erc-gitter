@@ -52,6 +52,8 @@ non-nil values will set `gitter' as a fool."
   "How many notifications are pending in the \"*Gitter
   Notifications*\" buffer.")
 
+(defvar erc-gn-unread-overlay nil
+  "Overlay variable for unread notifications")
 ;;;; Gitter-bot notification handling
 
 (defun erc-gitter-gitter-is-fool ()
@@ -82,7 +84,13 @@ It will be treated as any other fool."
   (when (eq erc-gitter-bot-handling 'buffer)
     (let ((buf (get-buffer-create "*Gitter Notifications*")))
       (with-current-buffer buf
-        (gitter-notifications-mode))
+        (gitter-notifications-mode)
+        (unless erc-gn-unread-overlay
+          (setq-local erc-gn-unread-overlay
+                      (make-overlay (point-min) (point-max)
+                                    (current-buffer) nil t)))
+        (overlay-put erc-gn-unread-overlay 'face
+                     '(t :inherit header-line :box nil)))
       buf)))
 
 (defvar gitter-notifications-mode-map
@@ -91,8 +99,10 @@ It will be treated as any other fool."
     (define-key map "g" nil) ; nothing to revert
     (define-key map "q" #'bury-buffer)
     ;; (define-key map (kbd "<return>") #'erc-gn-visit)
-    ;; (define-key map "p" #'erc-gn-previous)
-    ;; (define-key map "n" #'erc-gn-next)
+    (define-key map "p" #'erc-gn-previous)
+    (define-key map "n" #'erc-gn-next)
+    (define-key map [remap next-line] #'erc-gn-next)
+    (define-key map [remap previous-line] #'erc-gn-previous)
     map))
 
 (define-derived-mode gitter-notifications-mode special-mode
@@ -102,15 +112,32 @@ It will be treated as any other fool."
 
 (defun erc-gn-switch-to-notif ()
   (interactive)
-  (if (eq erc-gitter-bot-handling 'buffer)
-      (progn
-        (erc-gn-clear-notif)
-        (switch-to-buffer (erc-gn-make-buffer)))
-    (user-error "Gitter notifications are not being tracked.")))
+    (if (eq erc-gitter-bot-handling 'buffer)
+        (progn
+          (switch-to-buffer (erc-gn-make-buffer))
+          (when erc-gn-pending
+            (goto-char (overlay-start erc-gn-unread-overlay)))
+          (erc-gn-clear-notif))
+      (user-error "Gitter notifications are not being tracked.")))
 
-(defun erc-gn-clear-notif ()
+(defun erc-gn-next ()
   (interactive)
-  (erc-gn-update 0))
+  (let ((unread (>= (point) (overlay-start erc-gn-unread-overlay))))
+    (condition-case nil
+        (progn
+          (forward-char 1)
+          (re-search-forward "^\\[.*?\\]" nil)
+          (beginning-of-line 1)
+          (when unread
+            (move-overlay erc-gn-unread-overlay (point)
+                          (overlay-end erc-gn-unread-overlay))))
+      (error (and (move-overlay erc-gn-unread-overlay (point-max)
+                                (point-max))
+                  (beginning-of-line 1))))))
+
+(defun erc-gn-previous ()
+  (interactive)
+  (re-search-backward "^\\[.*?\\]" nil 'noerror))
 
 ;;;; Gitter Notification Mode-Line
 
@@ -136,7 +163,7 @@ mouse-3: Clear pending notifications"
                   "]")
           "")))
 
-(defvar erc-gn-notifications (erc-gn-notifications)
+(defvar erc-gn-notifications nil
   "Gitter Notification string for modeline.")
 (put 'erc-gn-notifications 'risky-local-variable t)
 
@@ -145,6 +172,10 @@ mouse-3: Clear pending notifications"
       (setq erc-gn-pending count)
     (setq erc-gn-pending (1+ erc-gn-pending)))
   (erc-gn-notifications))
+
+(defun erc-gn-clear-notif ()
+  (interactive)
+  (erc-gn-update 0))
 
 (provide 'erc-gitter-notifications)
 ;;; erc-gitter-notifications.el ends here
