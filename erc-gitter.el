@@ -160,9 +160,14 @@ messages sent from ERC."
   "Check for codeblock then send current line.
 
 If the line starts with three backticks, enable
-`erc-gitter-compose' and adjust keybindings."
+`erc-gitter-compose' and adjust keybindings.
+
+Allow for buttons to work by testing for a button then calling
+`erc-button-press-button'."
   (interactive)
   (cond
+   ((get-text-property (point) 'erc-callback)
+    (erc-button-press-button))
    (erc-gitter-compose
     (erc-gitter-compose))
    ((save-excursion
