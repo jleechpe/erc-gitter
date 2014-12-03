@@ -75,23 +75,25 @@ It will be treated as any other fool."
              (string= "gitter!gitter@gitter.im" nickuserhost))
     (let ((buf (erc-gn-make-buffer)))
       (with-current-buffer buf
-        (goto-char (point-max))
-        (insert message))
+        (save-excursion
+          (goto-char (point-max))
+          (insert message)))
       (erc-gn-update)
       (erc-hide-fools match-type nickuserhost message))))
 
 (defun erc-gn-make-buffer ()
   (when (eq erc-gitter-bot-handling 'buffer)
-    (let ((buf (get-buffer-create "*Gitter Notifications*")))
-      (with-current-buffer buf
-        (gitter-notifications-mode)
-        (unless erc-gn-unread-overlay
-          (setq-local erc-gn-unread-overlay
-                      (make-overlay (point-min) (point-max)
-                                    (current-buffer) nil t)))
-        (overlay-put erc-gn-unread-overlay 'face
-                     '(t :inherit header-line :box nil)))
-      buf)))
+    (unless (get-buffer "*Gitter Notifications*")
+      (let ((buf (get-buffer-create "*Gitter Notifications*")))
+        (with-current-buffer buf
+          (gitter-notifications-mode)
+          (unless erc-gn-unread-overlay
+            (let ((over (make-overlay (point-min) (point-max)
+                                      (current-buffer) nil t)))
+              (overlay-put over 'face
+                           '(t :inherit header-line :box nil))
+              (setq erc-gn-unread-overlay over))))))
+    (get-buffer "*Gitter Notifications*")))
 
 (defvar gitter-notifications-mode-map
   (let ((map (make-sparse-keymap)))
@@ -122,6 +124,8 @@ It will be treated as any other fool."
 
 (defun erc-gn-next ()
   (interactive)
+  ;; Test if current notification is unread, if so mark unread when
+  ;; moving.
   (let ((unread (>= (point) (overlay-start erc-gn-unread-overlay))))
     (condition-case nil
         (progn
@@ -133,11 +137,13 @@ It will be treated as any other fool."
                           (overlay-end erc-gn-unread-overlay))))
       (error (and (move-overlay erc-gn-unread-overlay (point-max)
                                 (point-max))
-                  (beginning-of-line 1))))))
+                  (beginning-of-line 1)))))
+  (erc-gn-update 0))
 
 (defun erc-gn-previous ()
   (interactive)
-  (re-search-backward "^\\[.*?\\]" nil 'noerror))
+  (re-search-backward "^\\[.*?\\]" nil 'noerror)
+  (erc-gn-update 0))
 
 ;;;; Gitter Notification Mode-Line
 
