@@ -2,7 +2,7 @@
 
 ;; Copyright (C) 2014  
 
-;; Author:  <jleechpe@zin-archtop>
+;; Author:  Jonathan Leech-Pepin <jonathan.leechpepin AT gmail.com>
 ;; Keywords: tools, extensions
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -32,15 +32,8 @@
   "Customization for `erc-gitter'."
   :group 'erc)
 
-(defcustom erc-gitter-bot-handling 't
-  "How to handle messages from gitter integration.
-
-'buffer will send messages to a separate buffer
-nil will do nothing with it.
-non-nil values will set `gitter' as a fool."
-  :type '(choice (const :tag "Do nothing" nil)
-                 (const :tag "Separate buffer" 'buffer)
-                 (symbol :tag "Treat as Fool" 't))
+(defgroup erc-gitter-faces nil
+  "Customization for `erc-gitter-notifications'."
   :group 'erc-gitter)
 
 (defvar erc-gitter-button
@@ -64,6 +57,7 @@ non-nil values will set `gitter' as a fool."
    (add-hook 'erc-send-modify-hook #'erc-gitter-format-markdown)
    (add-to-list 'erc-button-alist erc-gitter-button)
    (add-hook 'erc-join-hook #'erc-gitter-if-gitter)
+   (setq global-mode-string (append global-mode-string '(erc-gn-notifications)))
    (and (ad-enable-advice 'erc-server-filter-function
                           'before
                           'erc-gitter-multiline)
@@ -74,6 +68,7 @@ non-nil values will set `gitter' as a fool."
    (remove-hook 'erc-send-modify-hook #'erc-gitter-display-code)
    (remove-hook 'erc-insert-modify-hook #'erc-gitter-format-markdown)
    (remove-hook 'erc-send-modify-hook #'erc-gitter-format-markdown)
+   (setq global-mode-string (delq erc-gn-notifications global-mode-string))
    (setq erc-button-alist (delete erc-gitter-button erc-button-alist))
    (erc-gitter-minor-mode 0)
    (and (ad-disable-advice 'erc-server-filter-function
@@ -157,59 +152,6 @@ messages sent from ERC."
            (issue (cadr split))
            (url "https://github.com/%s/issues/%s"))
       (browse-url (format url channel issue)))))
-
-;;;; Gitter-bot notification handling
-
-(defun erc-gitter-gitter-is-fool ()
-  "Add the gitter-bot to the list of fools.
-
-It will be treated as any other fool."
-  (interactive)
-  (add-to-list 'erc-fools "gitter!gitter@gitter.im"))
-
-(defun erc-gitter-gitter-is-no-fool ()
-  "Remove the gitter-bot from the list of fools."
-  (interactive)
-  (setq erc-fools (delete "gitter!gitter@gitter.im" erc-fools)))
-
-;;;;; Gitter notification buffer
-
-(defun erc-gitter-bot-to-buffer (match-type nickuserhost message)
-  (when (and (eq match-type 'fool)
-             (string= "gitter!gitter@gitter.im" nickuserhost))
-    (let ((buf (erc-gn-make-buffer)))
-      (with-current-buffer buf
-        (goto-char (point-max))
-        (insert message))
-      (erc-hide-fools match-type nickuserhost message))))
-
-(defun erc-gn-make-buffer ()
-  (when (eq erc-gitter-bot-handling 'buffer)
-    (let ((buf (get-buffer-create "*Gitter Notifications*")))
-      (with-current-buffer buf
-        (gitter-notifications-mode))
-      buf)))
-
-(defvar gitter-notifications-mode-map
-  (let ((map (make-sparse-keymap)))
-    (set-keymap-parent map special-mode-map)
-    (define-key map "g" nil) ; nothing to revert
-    (define-key map "q" #'bury-buffer)
-    ;; (define-key map (kbd "<return>") #'erc-gn-visit)
-    ;; (define-key map "p" #'erc-gn-previous)
-    ;; (define-key map "n" #'erc-gn-next)
-    map))
-
-(define-derived-mode gitter-notifications-mode special-mode
-  "Gitter-Notifications"
-  "Major mode used in the \"*Gitter Notifications*\" buffer."
-  :group 'erc-gitter)
-
-(defun erc-gn-switch-to-notif ()
-  (interactive)
-  (if (eq erc-gitter-bot-handling 'buffer)
-      (switch-to-buffer (erc-gn-make-buffer))
-    (user-error "Gitter notifications are not being tracked.")))
 
 ;;;; Markdown and compose mode
 
