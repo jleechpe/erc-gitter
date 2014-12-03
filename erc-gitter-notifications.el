@@ -25,6 +25,7 @@
 ;;; Code:
 
 (require 'erc)
+(require 'erc-button)
 
 ;;;; Variables
 
@@ -73,11 +74,17 @@ It will be treated as any other fool."
 (defun erc-gitter-bot-to-buffer (match-type nickuserhost message)
   (when (and (eq match-type 'fool)
              (string= "gitter!gitter@gitter.im" nickuserhost))
-    (let ((buf (erc-gn-make-buffer)))
+    (let* ((buf (erc-gn-make-buffer))
+           (len (- (length message) 2))
+           (cb (get-text-property len 'erc-callback message))
+           (data (get-text-property len 'erc-data message)))
       (with-current-buffer buf
         (save-excursion
-          (goto-char (point-max))
-          (insert message)))
+          (let ((end (point-max)))
+          (goto-char end)
+          (insert message)
+          (put-text-property end (point) 'erc-data data)
+          (put-text-property end (point) 'erc-callback cb))))
       (erc-gn-update)
       (erc-hide-fools match-type nickuserhost message))))
 
@@ -105,6 +112,7 @@ It will be treated as any other fool."
     (define-key map "n" #'erc-gn-next)
     (define-key map [remap next-line] #'erc-gn-next)
     (define-key map [remap previous-line] #'erc-gn-previous)
+    (define-key map (kbd "<return>") #'erc-button-press-button)
     map))
 
 (define-derived-mode gitter-notifications-mode special-mode
