@@ -117,7 +117,7 @@ It will be treated as any other fool."
           (switch-to-buffer (erc-gn-make-buffer))
           (when erc-gn-pending
             (goto-char (overlay-start erc-gn-unread-overlay)))
-          (erc-gn-clear-notif))
+          (erc-gn-update 0))
       (user-error "Gitter notifications are not being tracked.")))
 
 (defun erc-gn-next ()
@@ -175,6 +175,7 @@ mouse-3: Clear pending notifications"
 
 (defun erc-gn-clear-notif ()
   (interactive)
+  (move-overlay erc-gn-unread-overlay (point-min) (point-max))
   (erc-gn-update 0))
 
 (provide 'erc-gitter-notifications)
